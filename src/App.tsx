@@ -758,7 +758,14 @@ export default function App() {
             </div>
           </section>
 
-          <div className="foot num">
+
+          {/* ── Commission Tracker ── */}
+          <CommissionTracker />
+
+          {/* ── Rollover Eligibility ── */}
+          <AgeEligibilityTracker />
+
+                    <div className="foot num">
             {usingSample ? 'Showing sample data — live API connection unavailable · ' : ''}
             Last sync {lastUpdate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} · auto-refreshes every 5 minutes
           </div>
@@ -1340,6 +1347,149 @@ function ClientScreen({ now, onExit }: { now: Date; onExit: () => void }) {
         </div>
       </div>
     </div>
+  )
+}
+
+
+
+/* ============================================================
+   Commission Tracker Panel
+   ============================================================ */
+
+const COMMISSION_DEALS = [
+  { name:'Joseph Walker',     datePaid:'2026-01-10', status:'Paid',      submitted:500000,  commission:20000    },
+  { name:'Michelle McCluer',  datePaid:'2026-02-12', status:'Paid',      submitted:287000,  commission:11480    },
+  { name:'Norma Canales',     datePaid:'2026-02-17', status:'Paid',      submitted:100000,  commission:4000     },
+  { name:'Velma Ivey',        datePaid:'2026-03-03', status:'Paid',      submitted:300000,  commission:12000    },
+  { name:'Thomas Crumplar',   datePaid:'2026-03-04', status:'Paid',      submitted:85000,   commission:3400     },
+  { name:'Janell Baylor',     datePaid:'2026-03-12', status:'Paid',      submitted:100000,  commission:4000     },
+  { name:'Mary Robinson',     datePaid:'2026-05-03', status:'Paid',      submitted:100000,  commission:4000     },
+  { name:'Lynne Milewski',    datePaid:'2026-05-03', status:'Paid',      submitted:70000,   commission:2800     },
+  { name:'Yvette Dewar',      datePaid:'2026-05-03', status:'Paid',      submitted:160000,  commission:6400     },
+  { name:'Donna Spry',        datePaid:'2026-05-17', status:'Paid',      submitted:151268,  commission:6050.72  },
+  { name:'Judith Allen-Close',datePaid:null,         status:'Scheduled', submitted:500000,  commission:20000    },
+  { name:'Carmen Bentley',    datePaid:null,         status:'Scheduled', submitted:70000,   commission:6400     },
+  { name:'Gary Hinshaw',      datePaid:null,         status:'Scheduled', submitted:300000,  commission:12000    },
+  { name:'Daryl Bradford',    datePaid:null,         status:'Scheduled', submitted:315000,  commission:12600    },
+  { name:'Alfonso Clavijo',   datePaid:null,         status:'Scheduled', submitted:160000,  commission:6400     },
+  { name:'Umsha',             datePaid:null,         status:'Scheduled', submitted:50000,   commission:2000     },
+  { name:'Lisa Talbot',       datePaid:null,         status:'Scheduled', submitted:600000,  commission:24000    },
+  { name:'Carla Williams',    datePaid:null,         status:'Scheduled', submitted:200000,  commission:8000     },
+  { name:'Terri Guthrie',     datePaid:null,         status:'Scheduled', submitted:50000,   commission:2000     },
+]
+
+const BLUE_CLIENTS_58 = [
+  'Mark Halter','Tina Bonner','Yuliang Liu','Quinton Wong','Vernellia Johnson',
+  'Walter Rodriguez','Joselito Ignacio','Mark Abowd','Sarah Sebban','Ezron Cooke',
+  'Allan Manco','Rafel Jackson','JD Smith','John Wright','Tammi La Tourette',
+  'Lisa Ellis','Phelesa Guy','Sheila Taeza','Shirlene Campbell','Wendy Cobb',
+  'Linda Matthews','Julia McGinn-Rodriguez','Russell Saylor','Maureen Vance',
+  'Tina Washington','William Mines','Jennifer Mikolic','Brett Troia','Afolake Sulola',
+  'Victor Herod','Ernesto Santana','Anthony Lundy','Karim Asqiriba','Stanley Marquez',
+  'Joseph Burk','Diane Yenzer','Omar Ramirez','Cinthya Cunningham','Shawn Wallace',
+  'Adebola Ajao','Gloria Curry','Jason & Pauline',
+]
+
+function CommissionTracker() {
+  const [filter, setFilter] = useState<'all' | 'paid' | 'scheduled'>('all')
+  const GOAL = 10000000
+  const paid = COMMISSION_DEALS.filter(d => d.status === 'Paid')
+  const sched = COMMISSION_DEALS.filter(d => d.status === 'Scheduled')
+  const paidSub   = paid.reduce((a,b)=>a+b.submitted,0)
+  const totalSub  = COMMISSION_DEALS.reduce((a,b)=>a+b.submitted,0)
+  const totalComm = COMMISSION_DEALS.reduce((a,b)=>a+b.commission,0)
+  const paidComm  = paid.reduce((a,b)=>a+b.commission,0)
+  const pendComm  = sched.reduce((a,b)=>a+b.commission,0)
+  const pct       = (paidSub / GOAL) * 100
+  const fmt = (v: number) => new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(v)
+  const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—'
+  const rows = filter === 'all' ? COMMISSION_DEALS : filter === 'paid' ? paid : sched
+  return (
+    <section className="panel reveal" style={{animationDelay:'0.22s'}}>
+      <div className="panel-head">
+        <div className="panel-title">Commission tracker — 2026</div>
+        <div className="panel-meta num">Goal: {fmt(GOAL)}</div>
+      </div>
+      <div className="comm-stats">
+        <div className="comm-stat"><div className="comm-stat-label">Total submitted</div><div className="comm-stat-val num">{fmt(totalSub)}</div></div>
+        <div className="comm-stat"><div className="comm-stat-label">Paid commission</div><div className="comm-stat-val num gold">{fmt(paidComm)}</div></div>
+        <div className="comm-stat"><div className="comm-stat-label">Pending commission</div><div className="comm-stat-val num">{fmt(pendComm)}</div></div>
+        <div className="comm-stat"><div className="comm-stat-label">Total commission</div><div className="comm-stat-val num">{fmt(totalComm)}</div></div>
+      </div>
+      <div className="comm-progress">
+        <div className="comm-progress-header"><span>Paid submitted vs $10M goal</span><span className="num gold">{pct.toFixed(1)}%</span></div>
+        <div className="comm-bar-outer"><div className="comm-bar-inner" style={{width:`${Math.min(pct,100)}%`}} /></div>
+        <div className="comm-progress-footer"><span className="num">{fmt(paidSub)} paid</span><span>{fmt(GOAL - paidSub)} remaining</span></div>
+      </div>
+      <div className="comm-tabs">
+        {(['all','paid','scheduled'] as const).map(t => (
+          <button key={t} className={`comm-tab${filter===t?' on':''}`} onClick={()=>setFilter(t)}>
+            {t.charAt(0).toUpperCase()+t.slice(1)} ({t==='all'?COMMISSION_DEALS.length:t==='paid'?paid.length:sched.length})
+          </button>
+        ))}
+      </div>
+      <div className="comm-table-wrap">
+        <table className="comm-table">
+          <thead><tr><th>Client</th><th>Status</th><th>Submitted</th><th>Commission</th><th>Date paid</th></tr></thead>
+          <tbody>
+            {rows.map((d,i) => (
+              <tr key={i}>
+                <td><strong>{d.name}</strong></td>
+                <td><span className={`chip ${d.status==='Paid'?'chip-green-sm':'chip-blue-sm'}`}>{d.status}</span></td>
+                <td className="num">{fmt(d.submitted)}</td>
+                <td className="num">{fmt(d.commission)}</td>
+                <td className="num dim">{fmtDate(d.datePaid)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  )
+}
+
+function AgeEligibilityTracker() {
+  const GREEN_SAMPLE = [
+    'Gloria Oshegbo','Richard Vorperian','Brandie Cockrell','Cary Greene','ML Beerman',
+    'Terrence Grady','Pam Robinson','Abdo Zacheus','Janet Muller','Jill Thomas',
+    'Ian Retterer','Darla Curtis','Angela Moore','Jermaine Davis','Sherri Boisvert',
+    'Beth Hollenbeck','Timothy Alford','Alexander Robinson','Stacy Cunningham',
+    'Beatrice Buckingham','Velma Thornton Ivey','Aaron Martinez','Grace Morrell',
+    'Tessa Corsetti','William Carr','Thomas Crumplar','Terri Guthrie','Susan Garcia',
+    'Lynne Antosiak','George Rasmussen','Nadine Baldonado','Gloria Gonzalez',
+    'Tammy Moore','Grace Norwood','James Fields','William Rincon','Maureen Madison',
+  ]
+  return (
+    <section className="panel reveal" style={{animationDelay:'0.26s'}}>
+      <div className="panel-head">
+        <div className="panel-title">Rollover eligibility tracker</div>
+        <div className="panel-meta">Live from Google Calendar · color-coded</div>
+      </div>
+      <div className="age-legend">
+        <span className="age-legend-item"><span className="age-dot-green-inline" />Green (Basil) = 59+ — rollover eligible</span>
+        <span className="age-legend-item"><span className="age-dot-blue-inline" />Blue (Blueberry) = 58 &amp; under — not yet</span>
+      </div>
+      <div className="age-panels">
+        <div className="age-panel age-green-panel">
+          <div className="age-panel-hdr"><span className="age-dot-green-inline" /><span>59+ — Eligible</span></div>
+          <div className="age-big-num age-green-num">468</div>
+          <div className="age-panel-sub">unique clients · green calendar events</div>
+          <div className="age-chip-wrap">
+            {GREEN_SAMPLE.map((n,i)=><span key={i} className="age-chip age-chip-green">{n}</span>)}
+            <span className="age-chip age-chip-green-more">+431 more</span>
+          </div>
+        </div>
+        <div className="age-panel age-blue-panel">
+          <div className="age-panel-hdr"><span className="age-dot-blue-inline" /><span>58 &amp; Under — Not Yet</span></div>
+          <div className="age-big-num age-blue-num">43</div>
+          <div className="age-panel-sub">unique clients · blue calendar events</div>
+          <div className="age-chip-wrap">
+            {BLUE_CLIENTS_58.map((n,i)=><span key={i} className="age-chip age-chip-blue">{n}</span>)}
+          </div>
+        </div>
+      </div>
+      <div className="age-note">Scanned 1,463 calendar events. Green = colorId 10 (Basil). Blue = colorId 9 (Blueberry). Update event colors in Google Calendar to keep current. Cannot facilitate rollover until age 59½.</div>
+    </section>
   )
 }
 
