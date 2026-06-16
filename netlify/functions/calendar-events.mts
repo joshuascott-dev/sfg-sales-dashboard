@@ -22,14 +22,18 @@ export default async (req: Request, context: Context) => {
       })
     }
 
-    // Get today's date range
+    // Get today's date range in Central time (America/Chicago)
     const now = new Date()
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const tzOffset = -5 // CDT is UTC-5 (or -6 for CST — Netlify uses system time, so we anchor to CT)
+    const centralNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/Chicago' }))
+    const startOfDay = new Date(centralNow.getFullYear(), centralNow.getMonth(), centralNow.getDate())
     const endOfDay = new Date(startOfDay)
     endOfDay.setDate(endOfDay.getDate() + 1)
 
-    const timeMin = startOfDay.toISOString()
-    const timeMax = endOfDay.toISOString()
+    // Convert back to UTC ISO strings for the API
+    const ctOffset = now.getTime() - centralNow.getTime()
+    const timeMin = new Date(startOfDay.getTime() + ctOffset).toISOString()
+    const timeMax = new Date(endOfDay.getTime() + ctOffset).toISOString()
 
     const baseUrl = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(googleCalendarId)}/events?timeMin=${timeMin}&timeMax=${timeMax}&orderBy=startTime&singleEvents=true`
     // Prefer OAuth token (works with private calendars); fall back to API key (public calendars only)
@@ -49,7 +53,9 @@ export default async (req: Request, context: Context) => {
       .filter((event: any) => event.start && event.summary)
       .map((event: any) => {
         const startTime = new Date(event.start.dateTime || event.start.date)
-        const timeStr = startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+        const timeStr = event.start.dateTime
+          ? startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Chicago' })
+          : 'All Day'
 
         // Determine event type and priority
         const summary = event.summary.toLowerCase()
