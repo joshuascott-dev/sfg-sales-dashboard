@@ -81,13 +81,25 @@ export default async (req: Request, context: Context) => {
           }
         }
 
+        // Rollover eligibility from color coding
+        // green (colorId 2 or 10) = age 59+ = eligible
+        // blue (colorId 9, 7, or 1) = age 58 or under = not yet eligible
+        const colorId = event.colorId || null
+        const greenIds = ['2', '10', '11']  // Sage, Basil, Green variants
+        const blueIds  = ['1', '7', '9']    // Lavender, Peacock, Blueberry
+        const rolloverEligible = greenIds.includes(colorId) ? true
+                               : blueIds.includes(colorId)  ? false
+                               : null  // no color = unknown
+
         return {
           time: timeStr,
           type: eventType,
           prospect: prospect,
           stage: summary.includes('prc') ? 'PRC' : 'Initial Consult',
           priority: priority,
-          eventId: event.id
+          eventId: event.id,
+          colorId,
+          rolloverEligible
         }
       })
 
