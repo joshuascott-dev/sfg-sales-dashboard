@@ -1087,6 +1087,9 @@ function BriefingPanel(props: {
     return `${base}${tail}.`
   })()
 
+  // Email summaries for display
+  const emailsToShow = unread.slice(0, 5)
+
   // Today's focus list
   type Focus = { tag: string; tagClass: string; text: string }
   const focus: Focus[] = []
@@ -1128,12 +1131,18 @@ function BriefingPanel(props: {
               </li>
             )}
             {rateLine && <li>{rateLine}</li>}
-            <li>{inboxLine}</li>
             {news[0] && (
               <li>
                 Top federal news:&nbsp;
                 <a href={news[0].link} target="_blank" rel="noopener noreferrer" className="briefing-link">
                   {news[0].title}
+                </a>
+              </li>
+            )}
+            {news[1] && (
+              <li>
+                <a href={news[1].link} target="_blank" rel="noopener noreferrer" className="briefing-link">
+                  {news[1].title}
                 </a>
               </li>
             )}
@@ -1155,6 +1164,33 @@ function BriefingPanel(props: {
             </ul>
           )}
         </div>
+      </div>
+
+      {/* Inbox section */}
+      <div className="briefing-inbox">
+        <div className="briefing-col-title">
+          Inbox&nbsp;
+          <span className="briefing-inbox-count">
+            {unread.length === 0 ? 'clear' : `${unread.length} unread`}
+            {stale.length > 0 ? ` · ${stale.length} aging follow-up${stale.length === 1 ? '' : 's'}` : ''}
+          </span>
+        </div>
+        {emailsToShow.length === 0 ? (
+          <div className="briefing-empty">No unread messages in the last 3 days.</div>
+        ) : (
+          <ul className="briefing-email-list">
+            {emailsToShow.map((m: any, i: number) => (
+              <li key={i} className="briefing-email-item">
+                <div className="briefing-email-meta">
+                  <span className="briefing-email-from">{m.from}</span>
+                  <span className="briefing-email-age">{m.hoursAgo != null ? (m.hoursAgo < 1 ? 'just now' : m.hoursAgo < 24 ? `${m.hoursAgo}h ago` : `${Math.floor(m.hoursAgo / 24)}d ago`) : ''}</span>
+                </div>
+                <div className="briefing-email-subject">{m.subject}</div>
+                {m.snippet && <div className="briefing-email-snippet">{m.snippet}</div>}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </section>
   )
