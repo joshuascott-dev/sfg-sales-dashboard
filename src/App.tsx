@@ -314,8 +314,10 @@ interface Email {
 interface ApptType {
   label: string
   thisMonth: number
-  lastMonth: number
+  lastMonth: number       // same period last month (MTD), not the full month
+  lastMonthFull: number   // full prior month — context only
   avgMonthly: number
+  avgMtd: number          // avg count by this day-of-month across completed months
   ytdTotal: number
 }
 
@@ -323,10 +325,14 @@ interface PipelineData {
   appts: ApptType[]
   total_this_month: number
   total_last_month: number
+  total_last_month_full: number
   total_avg_monthly: number
+  total_avg_mtd: number
   busiest_type: string | null
   month_label: string
   last_month_label: string
+  compare_label: string | null
+  mtd_day: number
 }
 
 interface MarketQuote {
@@ -674,13 +680,15 @@ export default function App() {
           {/* stat band — appointment activity (no dollars) */}
           <section className="stats reveal" style={{ animationDelay: '0.05s' }}>
             <div className="stat">
-              <div className="stat-label">{pipeline?.month_label ?? 'This month'} appointments</div>
+              <div className="stat-label">
+                {pipeline ? `${pipeline.month_label} appointments · MTD` : 'This month appointments'}
+              </div>
               <div className="stat-value gold">
                 {pipeline ? <AnimatedNumber value={pipeline.total_this_month} /> : '—'}
               </div>
               <div className="stat-note">
                 {pipeline
-                  ? <DeltaBadge current={pipeline.total_this_month} prior={pipeline.total_last_month} label={pipeline.last_month_label} />
+                  ? <DeltaBadge current={pipeline.total_this_month} prior={pipeline.total_last_month} label={pipeline.compare_label ?? pipeline.last_month_label} />
                   : 'booked on the calendar'}
               </div>
             </div>
@@ -965,14 +973,16 @@ function TasksPanel() {
 function ApptActivityPanel({ pipeline }: { pipeline: PipelineData | null }) {
   const maxVal = useMemo(() => {
     if (!pipeline) return 1
-    return Math.max(1, ...pipeline.appts.map(a => Math.max(a.thisMonth, a.lastMonth, a.avgMonthly)))
+    return Math.max(1, ...pipeline.appts.map(a => Math.max(a.thisMonth, a.lastMonth, a.avgMtd)))
   }, [pipeline])
 
   return (
     <div className="panel">
       <div className="panel-head">
         <div className="panel-title">Appointment activity</div>
-        <div className="panel-meta">{pipeline?.month_label ?? 'this month'} · by type</div>
+        <div className="panel-meta">
+          {pipeline ? `${pipeline.month_label} 1–${pipeline.mtd_day}` : 'this month'} · by type
+        </div>
       </div>
 
       {!pipeline && <div className="item-sub">Calendar data unavailable.</div>}
@@ -986,11 +996,17 @@ function ApptActivityPanel({ pipeline }: { pipeline: PipelineData | null }) {
           {/* dual bar: this month (solid) over avg marker */}
           <div className="appt-bar">
             <i className="appt-bar-fill" style={{ width: `${(a.thisMonth / maxVal) * 100}%` }} />
-            <span className="appt-bar-avg" style={{ left: `${(a.avgMonthly / maxVal) * 100}%` }} title={`avg ${a.avgMonthly}/mo`} />
+            <span
+              className="appt-bar-avg"
+              style={{ left: `${(a.avgMtd / maxVal) * 100}%` }}
+              title={`avg ${a.avgMtd} by day ${pipeline.mtd_day} · ${a.avgMonthly}/mo full-month avg`}
+            />
           </div>
           <div className="appt-meta">
-            <DeltaBadge current={a.thisMonth} prior={a.lastMonth} label={pipeline.last_month_label} />
-            <span className="appt-avg num">{a.avgMonthly}/mo avg</span>
+            <DeltaBadge current={a.thisMonth} prior={a.lastMonth} label={pipeline.compare_label ?? pipeline.last_month_label} />
+            <span className="appt-avg num" title={`${a.avgMonthly}/mo across completed months`}>
+              {a.avgMtd} avg by day {pipeline.mtd_day}
+            </span>
           </div>
         </div>
       ))}
@@ -998,16 +1014,20 @@ function ApptActivityPanel({ pipeline }: { pipeline: PipelineData | null }) {
       {pipeline && (
         <div className="appt-foot">
           <span className="appt-foot-cell">
-            <span className="appt-foot-label">This month</span>
+            <span className="appt-foot-label">{pipeline.month_label} 1–{pipeline.mtd_day}</span>
             <b className="num">{pipeline.total_this_month}</b>
           </span>
           <span className="appt-foot-cell">
-            <span className="appt-foot-label">{pipeline.last_month_label}</span>
-            <b className="num">{pipeline.total_last_month}</b>
+            <span className="appt-foot-label">{pipeline.compare_label ?? pipeline.last_month_label}</span>
+            <b className="num" title={`${pipeline.total_last_month_full} in all of ${pipeline.last_month_label}`}>
+              {pipeline.total_last_month}
+            </b>
           </span>
           <span className="appt-foot-cell">
-            <span className="appt-foot-label">Monthly avg</span>
-            <b className="num">{pipeline.total_avg_monthly}</b>
+            <span className="appt-foot-label">Avg by day {pipeline.mtd_day}</span>
+            <b className="num" title={`${pipeline.total_avg_monthly}/mo across completed months`}>
+              {pipeline.total_avg_mtd}
+            </b>
           </span>
         </div>
       )}
@@ -1130,11 +1150,11 @@ function BriefingPanel(props: {
           <ul className="briefing-list">
             {pipeline && (
               <li>
-                <b className="num">{pipeline.total_this_month}</b> appointments in {pipeline.month_label} ·{' '}
+                <b className="num">{pipeline.total_this_month}</b> appointments in {pipeline.month_label} through day {pipeline.mtd_day} ·{' '}
                 {pipeline.total_this_month >= pipeline.total_last_month
-                  ? <span className="up-text">▲ {pipeline.total_this_month - pipeline.total_last_month} vs {pipeline.last_month_label}</span>
-                  : <span className="down-text">▼ {pipeline.total_last_month - pipeline.total_this_month} vs {pipeline.last_month_label}</span>
-                } · <b className="num">{pipeline.total_avg_monthly}</b>/mo average
+                  ? <span className="up-text">▲ {pipeline.total_this_month - pipeline.total_last_month} vs {pipeline.compare_label ?? pipeline.last_month_label}</span>
+                  : <span className="down-text">▼ {pipeline.total_last_month - pipeline.total_this_month} vs {pipeline.compare_label ?? pipeline.last_month_label}</span>
+                } · <b className="num">{pipeline.total_avg_mtd}</b> avg by this point
               </li>
             )}
             {rateLine && <li>{rateLine}</li>}
@@ -1512,17 +1532,21 @@ const SAMPLE_EMAILS: Email[] = [
 
 const SAMPLE_PIPELINE: PipelineData = {
   appts: [
-    { label: 'Initial Consult', thisMonth: 6, lastMonth: 4, avgMonthly: 5.2, ytdTotal: 31 },
-    { label: 'Performance Report', thisMonth: 3, lastMonth: 5, avgMonthly: 3.8, ytdTotal: 23 },
-    { label: 'Follow Up', thisMonth: 4, lastMonth: 3, avgMonthly: 3.4, ytdTotal: 20 },
-    { label: 'Account Setup', thisMonth: 2, lastMonth: 1, avgMonthly: 1.6, ytdTotal: 10 }
+    { label: 'Initial Consult', thisMonth: 6, lastMonth: 4, lastMonthFull: 7, avgMonthly: 5.2, avgMtd: 2.6, ytdTotal: 31 },
+    { label: 'Performance Report', thisMonth: 3, lastMonth: 2, lastMonthFull: 5, avgMonthly: 3.8, avgMtd: 1.9, ytdTotal: 23 },
+    { label: 'Follow Up', thisMonth: 4, lastMonth: 1, lastMonthFull: 3, avgMonthly: 3.4, avgMtd: 1.7, ytdTotal: 20 },
+    { label: 'Account Setup', thisMonth: 2, lastMonth: 1, lastMonthFull: 1, avgMonthly: 1.6, avgMtd: 0.8, ytdTotal: 10 }
   ],
   total_this_month: 15,
-  total_last_month: 13,
+  total_last_month: 8,
+  total_last_month_full: 16,
   total_avg_monthly: 14.0,
+  total_avg_mtd: 7.0,
   busiest_type: 'Initial Consult',
   month_label: 'June',
-  last_month_label: 'May'
+  last_month_label: 'May',
+  compare_label: 'May 1–15',
+  mtd_day: 15
 }
 
 const SAMPLE_TSP: TspFund[] = [
