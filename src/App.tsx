@@ -241,7 +241,7 @@ function DeltaBadge({ current, prior, label }: { current: number; prior: number;
    ============================================================ */
 
 function MarqueeTicker({ markets, tsp }: { markets: MarketQuote[]; tsp: TspFund[] }) {
-  type Item = { label: string; priceStr: string; changePct: number; group: 'mkt' | 'tsp' }
+  type Item = { label: string; priceStr: string; changePct: number; ytdPct?: number | null; group: 'mkt' | 'tsp' }
 
   const items: Item[] = useMemo(() => {
     const m: Item[] = markets.map(q => ({
@@ -254,6 +254,7 @@ function MarqueeTicker({ markets, tsp }: { markets: MarketQuote[]; tsp: TspFund[
       label: f.label,
       priceStr: `$${f.price.toFixed(2)}`,
       changePct: f.changePct,
+      ytdPct: f.ytdPct,
       group: 'tsp'
     }))
     return [...m, ...t]
@@ -269,6 +270,11 @@ function MarqueeTicker({ markets, tsp }: { markets: MarketQuote[]; tsp: TspFund[
       <span className={`tick-chg ${it.changePct >= 0 ? 'up' : 'down'}`}>
         {it.changePct >= 0 ? '▲' : '▼'} {Math.abs(it.changePct).toFixed(2)}%
       </span>
+      {it.ytdPct !== null && it.ytdPct !== undefined && (
+        <span className={`tick-ytd ${it.ytdPct >= 0 ? 'up' : 'down'}`} title="Year to date">
+          YTD {it.ytdPct >= 0 ? '+' : '−'}{Math.abs(it.ytdPct).toFixed(2)}%
+        </span>
+      )}
     </span>
   )
 
@@ -348,6 +354,7 @@ interface TspFund {
   price: number
   change: number
   changePct: number
+  ytdPct?: number | null
 }
 
 interface NewsItem {
@@ -1550,9 +1557,9 @@ const SAMPLE_PIPELINE: PipelineData = {
 }
 
 const SAMPLE_TSP: TspFund[] = [
-  { label: 'G Fund', price: 18.92, change: 0.01, changePct: 0.05 },
-  { label: 'F Fund', price: 20.14, change: 0.08, changePct: 0.40 },
-  { label: 'C Fund', price: 92.46, change: 0.51, changePct: 0.55 },
-  { label: 'S Fund', price: 88.73, change: -0.32, changePct: -0.36 },
-  { label: 'I Fund', price: 45.18, change: 0.22, changePct: 0.49 }
+  { label: 'G Fund', price: 18.92, change: 0.01, changePct: 0.05, ytdPct: 2.31 },
+  { label: 'F Fund', price: 20.14, change: 0.08, changePct: 0.40, ytdPct: 3.12 },
+  { label: 'C Fund', price: 92.46, change: 0.51, changePct: 0.55, ytdPct: 8.44 },
+  { label: 'S Fund', price: 88.73, change: -0.32, changePct: -0.36, ytdPct: 5.07 },
+  { label: 'I Fund', price: 45.18, change: 0.22, changePct: 0.49, ytdPct: 9.86 }
 ]
